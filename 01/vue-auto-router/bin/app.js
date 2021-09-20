@@ -1,12 +1,9 @@
 #!/usr/bin/env node
-// console.log("进入cli")
-let figlet = require('figlet');
 
-figlet('Hello XHY!!', function(err, data) {
-    if (err) {
-        console.log('Something went wrong...');
-        console.dir(err);
-        return;
-    }
-    console.log(data)
-});
+const program = require('commander')
+program.version(require('../package').version)
+program.command('init <name>')
+    .description('init project')
+    .action(require('../lib/init'))
+program.command('refresh').description('refresh routers...').action(require('../lib/refresh'))
+program.parse(process.argv)

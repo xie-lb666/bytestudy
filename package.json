@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/xie-lb666/bytestudy/issues"
   },
-  "homepage": "https://github.com/xie-lb666/bytestudy#readme"
+  "homepage": "https://github.com/xie-lb666/bytestudy#readme",
+  "dependencies": {
+    "mongodb": "^4.1.2"
+  }
 }
