@@ -1,0 +1,1 @@
+import{createApp as o}from"vue";var n={name:"哈哈哈"};function l(){console.log("main")}console.log(o),console.log("the answer is 42"),console.log(n),console.log("foo"),function o(){console.log(o)}();export{l as main};
