@@ -1,0 +1,33 @@
+.header {
+  height: 64px;
+}
+
+#logo {
+  padding-left: 40px;
+}
+
+#logo img {
+  width: 32px;
+  margin-right: 12px;
+}
+
+.searchinput {
+  display: flex;
+  /* align-items: center; */
+  padding-top: 10px;
+  /* height: 100%; */
+}
+
+.headeritem {
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 29px;
+}
+ul#menu{
+  border-bottom: none;
+
+}
+
+.banner{
+  
+}
