@@ -13,45 +13,106 @@
     <script>
         // 1.基本结构
         const Vue = {
-            createApp(options) {
+            createRenderer({
+                querySelector,
+                insert
+            }) {
                 return {
-                    mount(selector) {
-                        console.log("要挂载的元素");
-                        // 1。找到宿主元素
-                        const parent = document.querySelector(selector);
-                        // 2.渲染页面  
-                        if (options.render) {
-                            // 2.1 处理 templat：
-                            console.log("chuli1");
-                            options.render = this.compile(parent.innerHtml);
-                        }
-                        // 2.2：用户直接编写render
-                        const el = options.render.call(options.data()); //
-                        //    3.追加宿主
-                        parent.innerHTML = "";
-                        console.log("",parent);
-                        parent.appendChild(el);
-                    },
-                    compile(template) {
-                        // 返回一个 render函数
-                        return function render() {
-                            const h3 = document.createElement('h3');
-                            h3.textContent = this.title;
-                            return h3;
+                    createApp(options) {
+                        return {
+                            mount(selector) {
+                                // 1。找到宿主元素
+                                const parent = document.querySelector(selector);
+                                // 2.渲染页面  
+                                if (!options.render) {
+                                    // 2.1 处理 templat：
+                                    options.render = this.compile(parent.innerHtml);
+                                }
+
+                                // setup和其他选项
+                                if (options.setup) {
+                                    this.setupState = options.setup();
+                                }
+                                if (options.data) {
+                                    this.data = options.data()
+                                }
+                                const proxy = new Proxy(this, {
+                                    get(target, key) {
+                                        // 先从setup取，如果取不到从data取
+                                        if (target.setupState && key in target.setupState) {
+                                            console.log("get", target.setupState[key]);
+                                            return target.setupState[key]
+                                        } else {
+                                            return target.data[key];
+                                        }
+                                    },
+                                    set(target, key, val) {
+                                        if (target.setupState && key in target.setupState) {
+                                            console.log("set", val);
+                                            target.setupState[key] = val
+                                        } else {
+                                            target.data[key] = val
+                                        }
+                                    }
+                                })
+
+                                this.update = function () {
+                                    const el = options.render.call(proxy);
+                                    //    3.追加宿主
+                                    parent.innerHTML = "";
+                                    parent.appendChild(el);
+                                }
+                                // 2.2：用户直接编写render
+                                this.update();
+                            },
+                            compile(template) {
+                                // 返回一个 render函数
+                                return function render() {
+                                    const h3 = document.createElement('h3');
+                                    h3.textContent = this.title;
+                                    return h3;
+                                }
+                            }
                         }
                     }
                 }
+            },
+            createApp(options) {
+                const renderer = Vue.createRenderer({
+                    querySelector(sel) {
+                        return document.querySelector(sel);
+                    },
+                    insert(el, prant) {
+                        return parent.appendChild(el);
+                    }
+                });
+                return renderer.createApp(options);
             }
         }
     </script>
     <script>
-        const app = Vue.createApp({
-            data() {
-                return {
-                    title: '哈哈哈',
+        function reactive(obj) {
+            return new Proxy(obj, {
+                get(target, key) {
+                    return target[key];
+                },
+                set(target, key, val) {
+                    target[key] = val;
+                    app.update();
                 }
+            })
+        }
+        const app = Vue.createApp({
+            setup() {
+                const state = reactive({
+                    title: '哈哈哈'
+                })
+                setTimeout(() => {
+                    state.title = 'hellow v3'
+                }, 1000)
+                return state
+
             },
-            render() {},
         })
         app.mount("#app")
     </script>
