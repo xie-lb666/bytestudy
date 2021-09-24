@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">{{title}}</div>
+    <script>
+        // 1.基本结构
+        const Vue = {
+            createApp(options) {
+                return {
+                    mount(selector) {
+                        console.log("要挂载的元素");
+                        // 1。找到宿主元素
+                        const parent = document.querySelector(selector);
+                        // 2.渲染页面  
+                        if (options.render) {
+                            // 2.1 处理 templat：
+                            console.log("chuli1");
+                            options.render = this.compile(parent.innerHtml);
+                        }
+                        // 2.2：用户直接编写render
+                        const el = options.render.call(options.data()); //
+                        //    3.追加宿主
+                        parent.innerHTML = "";
+                        console.log("",parent);
+                        parent.appendChild(el);
+                    },
+                    compile(template) {
+                        // 返回一个 render函数
+                        return function render() {
+                            const h3 = document.createElement('h3');
+                            h3.textContent = this.title;
+                            return h3;
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        const app = Vue.createApp({
+            data() {
+                return {
+                    title: '哈哈哈',
+                }
+            },
+            render() {},
+        })
+        app.mount("#app")
+    </script>
+</body>
+
+</html>
