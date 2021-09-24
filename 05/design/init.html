@@ -41,6 +41,7 @@
                                         // 先从setup取，如果取不到从data取
                                         if (target.setupState && key in target.setupState) {
                                             console.log("get", target.setupState[key]);
+
                                             return target.setupState[key]
                                         } else {
                                             return target.data[key];
@@ -56,14 +57,14 @@
                                     }
                                 })
 
-                                this.update = function () {
+                                this.update = effect(() => {
                                     const el = options.render.call(proxy);
                                     //    3.追加宿主
                                     parent.innerHTML = "";
                                     parent.appendChild(el);
-                                }
+                                })
                                 // 2.2：用户直接编写render
-                                this.update();
+                                // this.update();
                             },
                             compile(template) {
                                 // 返回一个 render函数
@@ -94,14 +95,61 @@
         function reactive(obj) {
             return new Proxy(obj, {
                 get(target, key) {
+                    console.log("get里触发tarck，key=", key)
+                    track(target, key)
                     return target[key];
                 },
                 set(target, key, val) {
                     target[key] = val;
-                    app.update();
+                    // app.update();
+                    trigger(target, key);
                 }
             })
         }
+
+        const effectStack = []; //
+        // 传一个回调 执行fn，将
+        function effect(fn) {
+            const eff = function () {
+                try {
+                    effectStack.push(eff)
+                    fn()
+                } finally {
+                    effectStack.pop();
+                }
+            }
+            eff();
+            return eff;
+        }
+        const targetMap = {}
+
+        function track(target, key) {
+            // console.log("track", target, targetMap)
+            const effect = effectStack[effectStack.length - 1];
+            let map = targetMap[target]
+            if (!map) {
+                map = targetMap[target] = {}
+            }
+            let deps = map[key];
+            if (!deps) {
+                deps = map[key] = [];
+            }
+            if (deps.indexOf(effect) === -1) {
+                deps.push(effect)
+            }
+        }
+
+        function trigger(target, key) {
+            console.log("trigger", target, targetMap)
+            const map = targetMap[target]
+            if (map) {
+                const deps = map[key]
+                if (deps) {
+                    deps.forEach(dep => dep());
+                }
+            }
+        }
+
         const app = Vue.createApp({
             setup() {
                 const state = reactive({
@@ -109,7 +157,7 @@
                 })
                 setTimeout(() => {
                     state.title = 'hellow v3'
-                }, 1000)
+                }, 2000)
                 return state
 
             },

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">{{state}}</div>
+    <script>
+        function h(tag, props, children) {
+            return {
+                tag,
+                props,
+                children
+            }
+        }
+        // 1.基本结构
+        const Vue = {
+            createRenderer({
+                querySelector,
+                insert,
+                createElement,
+                remove
+            }) {
+                return {
+                    createApp(options) {
+                        return {
+                            mount(selector) {
+                                // 1。找到宿主元素
+                                const parent = querySelector(selector);
+                                console.log("ppp", parent)
+                                // 2.渲染页面  
+                                if (!options.render) {
+                                    // 2.1 处理 templat：
+                                    options.render = this.compile(parent.innerHtml);
+                                }
+
+                                // setup和其他选项
+                                if (options.setup) {
+                                    this.setupState = options.setup();
+                                }
+                                if (options.data) {
+                                    this.data = options.data()
+                                }
+                                const proxy = new Proxy(this, {
+                                    get(target, key) {
+                                        // 先从setup取，如果取不到从data取
+                                        console.log(target, key);
+                                        if (target.setupState && key in target.setupState) {
+                                            return target.setupState[key]
+                                        } else {
+                                            return target.data[key];
+                                        }
+                                    },
+                                    set(target, key, val) {
+                                        if (target.setupState && key in target.setupState) {
+                                            target.setupState[key] = val
+                                        } else {
+                                            target.data[key] = val
+                                        }
+                                    }
+                                })
+
+                                this.update = effect(() => {
+                                    // //    3.追加宿主
+
+                                    const vnode = options.render.call(proxy);
+                                    // 转换vnode为dom
+                                    // 初始化创建整个树
+                                    if (!this.isMounted) {
+                                        // 
+                                        const el = this.createElm(vnode);
+                                        parent.innerHTML = "";
+                                        insert(el, parent);
+                                        this.isMounted = true
+                                    } else {
+                                        // todu update
+                                        this.patch(this._vnode, vnode);
+                                    }
+                                    this._vnode = vnode;
+                                })
+                                // 2.2：用户直接编写render
+                                // this.update();
+                            },
+                            patch(n1, n2) {
+                                const el = n2.el = n1.el;
+                                // 1为老，2为新
+                                // 必须更新 相同节点  tag和key等等
+                                if (n1.tag === n2.tag && n1.key === n2.key) {
+                                    // update
+                                    // props?
+                                    const oldCh = n1.children;
+                                    const newCh = n2.children;
+                                    if (typeof oldCh === 'string') {
+                                        if (typeof newCh === 'string') {
+                                            if (oldCh !== newCh) {
+                                                el.textContent = newCh
+                                            }
+                                        } else {
+                                            el.textContent = "";
+                                            newCh.forEach(child => insert(this.createElm(child), el));
+                                        }
+                                    } else {
+                                        if (typeof newCh === 'string') {
+                                            el.textContent = newCh
+                                        } else {
+                                            this.updateChildren(el, oldCh, newCh);
+                                        }
+
+                                    }
+                                } else {
+                                    // replace
+                                }
+                            },
+                            updateChildren(el, oldCh, newCh) {
+                                // 1.获取短的
+                                const len = Math.min(oldCh.length, newCh.length);
+                                for (let i = 0; i < len; i++) {
+                                    this.patch(oldCh[i], newCh[i]);
+                                }
+                                if (newCh.length > oldCh.length) {
+                                    newCh.slice(len).forEach(child => {
+                                        insert(this.createElm(child), el);
+                                    });
+                                } else if (newCh.length < oldCh.length) {
+                                    oldCh.slice(len).forEach(child => {
+                                        console.log(child.el,el);
+                                        remove(child.el, el);
+                                    });
+                                }
+                            },
+                            createElm(vnode) {
+                                let {
+                                    tag,
+                                    props,
+                                    children
+                                } = vnode;
+                                // 整体遍历 ，创建整个树
+                                const el = createElement(tag);
+                                // 如果存在属性就设置
+                                // 递归
+                                if (typeof children === 'string') {
+                                    el.textContent = children;
+                                } else {
+                                    console.log("digui")
+                                    children.forEach(child => {
+                                        insert(this.createElm(child), el)
+                                    }, el)
+
+                                }
+                                vnode.el = el;
+                                //vnode 要保存真实dom
+                                return el;
+                            },
+                            compile(template) {
+                                return function render() {
+                                    if (Array.isArray(this.title)) {
+                                        return h('h3', null, this.title.map(s => h('p', null, s)));
+                                    }
+                                    return h('h3', null, this.title);
+                                    // return h('h3', null, [h('h3', null, this.title), h('h3', null, this.title),
+                                    //     h('h3', null, this.title)
+                                    // ]);
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            createApp(options) {
+                const renderer = Vue.createRenderer({
+                    querySelector(sel) {
+                        return document.querySelector(sel);
+                    },
+                    insert(el, parent) {
+                        console.log(el, parent);
+                        return parent.appendChild(el);
+                    },
+                    createElement(tag) {
+                        return document.createElement(tag);
+                    },
+                    remove(n, n1) {
+                        return n1.removeChild(n);
+                    }
+                });
+                return renderer.createApp(options);
+            }
+        }
+    </script>
+    <script>
+        function reactive(obj) {
+            // close.log(obj);
+            console.log(obj);
+            return new Proxy(obj, {
+                get(target, key) {
+                    console.log("get里触发tarck，key=", key, target)
+                    track(target, key)
+                    return target[key];
+                },
+                set(target, key, val) {
+                    target[key] = val;
+                    // app.update();
+                    trigger(target, key);
+                }
+            })
+        }
+
+        const effectStack = []; //
+        // 传一个回调 执行fn，将
+        function effect(fn) {
+            const eff = function () {
+                try {
+                    effectStack.push(eff)
+                    fn()
+                } finally {
+                    effectStack.pop();
+                }
+            }
+            eff();
+            return eff;
+        }
+        const targetMap = {}
+
+        function track(target, key) {
+            // console.log("track", target, targetMap)
+            const effect = effectStack[effectStack.length - 1];
+            let map = targetMap[target]
+            if (!map) {
+                map = targetMap[target] = {}
+            }
+            let deps = map[key];
+            if (!deps) {
+                deps = map[key] = [];
+            }
+            if (deps.indexOf(effect) === -1) {
+                deps.push(effect)
+            }
+        }
+
+        function trigger(target, key) {
+            // console.log("trigger", target, targetMap)
+            const map = targetMap[target]
+            if (map) {
+                const deps = map[key]
+                if (deps) {
+                    deps.forEach(dep => dep());
+                }
+            }
+        }
+
+        const app = Vue.createApp({
+            setup() {
+                // const state = reactive({
+                //     title: '哈哈哈'
+                // })
+                // setTimeout(() => {
+                //     state.title = 'hellow v3'.split('')
+                // }, 2000)
+                // const state1 = reactive({
+                //     title: '哈哈哈'
+                // })
+                // setTimeout(() => {
+                //     state1.title = 'hellow v3'
+                // }, 2000)
+                // return {
+                //     state,
+                //     state1
+                // }
+
+
+                const state = reactive({
+                    title: '哈哈哈hellow'.split('')
+                })
+                setTimeout(() => {
+                    state.title = 'v3'.split('')
+                }, 2000)
+
+
+                return state
+
+            },
+        })
+        app.mount("#app")
+    </script>
+</body>
+
+</html>
